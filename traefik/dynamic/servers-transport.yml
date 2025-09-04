@@ -1,0 +1,6 @@
+http:
+  serversTransports:
+    sse:
+      forwardingTimeouts:
+        responseHeaderTimeout: "0s"
+        idleConnTimeout: "180s"
