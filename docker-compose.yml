@@ -47,11 +47,11 @@ services:
       - POSTGRES_PASSWORD=${PG_SUPERUSER_PASSWORD}
     volumes:
       - ./data/postgres/data:/var/lib/postgresql/data
-      - ./data/postgres/init:/docker-entrypoint-initdb.d:ro
+      # - ./data/postgres/init:/docker-entrypoint-initdb.d:ro
     networks: [web]
   n8n:
     build:
-      context: .
+      context: ./n8n
       dockerfile: Dockerfile
     container_name: n8n
     restart: unless-stopped
