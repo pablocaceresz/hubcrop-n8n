@@ -1,9 +1,7 @@
 version: "3.9"
-
 networks:
   web:
     external: false
-
 services:
   traefik:
     image: traefik:v3.1
@@ -20,7 +18,6 @@ services:
       - --entrypoints.websecure.address=:443
       - --api.dashboard=true
       - --api=true
-      # Let's Encrypt (HTTP-01)
       - --certificatesresolvers.le.acme.email=${ACME_EMAIL}
       - --certificatesresolvers.le.acme.storage=/letsencrypt/acme.json
       - --certificatesresolvers.le.acme.httpchallenge=true
@@ -32,23 +29,29 @@ services:
     networks: [web]
     labels:
       - traefik.enable=true
-
-      # Redirect http -> https
       - traefik.http.routers.http-catchall.rule=HostRegexp(`{host:.+}`)
       - traefik.http.routers.http-catchall.entrypoints=web
       - traefik.http.routers.http-catchall.middlewares=redirect-to-https
       - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
-
-      # Dashboard (BasicAuth)
       - traefik.http.routers.traefik.rule=Host(`${TRAEFIK_HOST}`)
       - traefik.http.routers.traefik.entrypoints=websecure
       - traefik.http.routers.traefik.tls.certresolver=le
       - traefik.http.routers.traefik.service=api@internal
       - traefik.http.routers.traefik.middlewares=dashboard-auth@file
-
+  postgres:
+    image: postgres:16-alpine
+    container_name: pg-shared
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${PG_SUPERUSER_PASSWORD}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    networks: [web]
   n8n:
     build:
-      context: ./n8n
+      context: .
       dockerfile: Dockerfile
     container_name: n8n
     restart: unless-stopped
@@ -61,7 +64,12 @@ services:
       - WEBHOOK_URL=https://${N8N_HOST}/
       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
       - N8N_SECURE_COOKIE=true
-      - DB_TYPE=sqlite
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=${N8N_DB_NAME}
+      - DB_POSTGRESDB_USER=${N8N_DB_USER}
+      - DB_POSTGRESDB_PASSWORD=${N8N_DB_PASSWORD}
       - NODE_FUNCTION_ALLOW_EXTERNAL=*
       - N8N_PERSONALIZATION_ENABLED=false
       - N8N_LOG_LEVEL=info
@@ -69,40 +77,25 @@ services:
       - n8n_data:/home/node/.n8n
       - n8n_files:/files
     networks: [web]
+    depends_on:
+      - postgres
     labels:
       - traefik.enable=true
       - traefik.http.routers.n8n.rule=Host(`${N8N_HOST}`)
       - traefik.http.routers.n8n.entrypoints=websecure
       - traefik.http.routers.n8n.tls.certresolver=le
       - traefik.http.services.n8n.loadbalancer.server.port=5678
-
-  metamcp-db:
-    image: postgres:16-alpine
-    container_name: metamcp-db
-    restart: unless-stopped
-    environment:
-      - POSTGRES_DB=metamcp
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=${METAMCP_PG_PASSWORD}
-    volumes:
-      - metamcp_pg_data:/var/lib/postgresql/data
-    networks: [web]
-
   metamcp:
     image: ghcr.io/metatool-ai/metamcp:2.4.13
     container_name: metamcp
     restart: unless-stopped
     depends_on:
-      - metamcp-db
+      - postgres
     environment:
-      # URL pública (CORS/SSE): debe coincidir con la URL usada por los clientes
       - APP_URL=https://${MCP_HOST}
-      # Conexión a Postgres
-      - DATABASE_URL=postgresql://postgres:${METAMCP_PG_PASSWORD}@metamcp-db:5432/metamcp
-      # Secrets de la app
+      - DATABASE_URL=postgresql://${METAMCP_DB_USER}:${METAMCP_DB_PASSWORD}@postgres:5432/${METAMCP_DB_NAME}
       - BETTER_AUTH_SECRET=${METAMCP_BETTER_AUTH_SECRET}
       - ENCRYPTION_KEY=${METAMCP_ENCRYPTION_KEY}
-      # Puerto interno
       - PORT=12008
     networks: [web]
     labels:
@@ -111,12 +104,10 @@ services:
       - traefik.http.routers.mcp.entrypoints=websecure
       - traefik.http.routers.mcp.tls.certresolver=le
       - traefik.http.services.mcp.loadbalancer.server.port=12008
-      # SSE: timeouts amplios + CORS
       - traefik.http.services.mcp.loadbalancer.serverstransport=sse@file
       - traefik.http.routers.mcp.middlewares=mcp-cors@file
-
 volumes:
   traefik_letsencrypt:
   n8n_data:
   n8n_files:
-  metamcp_pg_data:
+  pg_data:
