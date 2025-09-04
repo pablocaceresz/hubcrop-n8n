@@ -45,6 +45,8 @@ services:
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=${PG_SUPERUSER_PASSWORD}
+    ports:
+      - "5432:5432"
     volumes:
       - ./data/postgres/data:/var/lib/postgresql/data
       # - ./data/postgres/init:/docker-entrypoint-initdb.d:ro
@@ -87,9 +89,10 @@ services:
       - traefik.http.routers.n8n.tls.certresolver=le
       - traefik.http.services.n8n.loadbalancer.server.port=5678
   metamcp:
-    build:
-      context: ./metamcp
-      dockerfile: Dockerfile
+    image: ghcr.io/metatool-ai/metamcp:2.4.13
+    # build:
+    #   context: ./metamcp
+    #   dockerfile: Dockerfile
     container_name: metamcp
     restart: unless-stopped
     depends_on:
