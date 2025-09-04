@@ -4,7 +4,7 @@ http:
       basicAuth:
         # Cambia el hash por el tuyo (htpasswd -nb admin 'MiClave123')
         users:
-          - "admin:$apr1$replace$thishash"
+          - "admin:$apr1$IQZ7dOnd$3ykLfuq6FEcuZFA1zUsSx0"
     mcp-cors:
       headers:
         accessControlAllowOriginList:

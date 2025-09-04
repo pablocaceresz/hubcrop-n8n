@@ -106,5 +106,3 @@ services:
       - traefik.http.services.mcp.loadbalancer.server.port=12008
       - traefik.http.services.mcp.loadbalancer.serverstransport=sse@file
       - traefik.http.routers.mcp.middlewares=mcp-cors@file
-volumes:
-  # Named volumes removed. Using bind mounts under ./data per service
