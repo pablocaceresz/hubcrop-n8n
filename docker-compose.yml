@@ -94,6 +94,7 @@ services:
       - postgres
     environment:
       - APP_URL=https://${MCP_HOST}
+      - NEXT_PUBLIC_APP_URL=https://${MCP_HOST}
       - DATABASE_URL=postgresql://${METAMCP_DB_USER}:${METAMCP_DB_PASSWORD}@postgres:5432/${METAMCP_DB_NAME}
       - BETTER_AUTH_SECRET=${METAMCP_BETTER_AUTH_SECRET}
       - ENCRYPTION_KEY=${METAMCP_ENCRYPTION_KEY}
